@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tabla Real del Truco</title>
+<meta name="description" content="Torneo de truco 1 vs 1: tabla de Blyts, tabla real con partidos caídos corregidos, resultados y estadísticas.">
+<meta name="theme-color" content="#1D5A41">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='3' width='20' height='26' rx='3' fill='%231D5A41'/%3E%3Cpath d='M16 9l2.2 5.3 5.8.4-4.4 3.7 1.4 5.6L16 21l-5 3 1.4-5.6L8 14.7l5.8-.4z' fill='%23F6ECD6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow" id="eyebrow">Torneo de truco · 1 vs 1 · todos contra todos</span>
+      <h1 id="tTitle">Tabla real del torneo</h1>
+      <span class="status" id="syncStatus">Conectando…</span>
+    </div>
+    <div class="hdr-r">
+      <select id="torneoSel" aria-label="Torneo" hidden></select>
+      <span id="sesionBox"></span>
+    </div>
+  </header>
+  <div id="banner"></div>
+  <div class="strip" id="strip"></div>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="view"></main>
+  <footer>Los partidos caídos no cuentan en la tabla real hasta que se carga el partido recuperado.</footer>
+</div>
+<script src="supabase.js"></script>
+<script src="calc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
