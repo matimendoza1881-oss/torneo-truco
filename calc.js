@@ -116,14 +116,9 @@
   function estadisticas(real, lista, byId) {
     var s = [];
     var push = function (clave, titulo, t, fmt, nota) { if (t) s.push({ clave: clave, titulo: titulo, jugadores: t.jugadores, valor: t.valor, texto: fmt(t.valor), nota: nota || "" }); };
-    push("racha", "Racha ganadora actual", topBy(real, function (r) { return r.rachaActual; }, 2), function (v) { return v + " seguidos"; });
-    push("rachaMax", "Racha más larga del torneo", topBy(real, function (r) { return r.rachaMax; }, 2), function (v) { return v + " seguidos"; });
-    push("ganados", "Más partidos ganados", topBy(real, function (r) { return r.pg; }, 1), function (v) { return v + " ganados"; });
-    push("perdidos", "Más partidos perdidos", topBy(real, function (r) { return r.pp; }, 1), function (v) { return v + " perdidos"; });
-    push("mala", "Racha perdedora actual", topBy(real, function (r) { return -r.rachaActual; }, 2), function (v) { return v + " seguidos"; });
-    push("malas", "Más rivales dejados en las malas", topBy(real, function (r) { return r.bonusDet.malas; }, 1), function (v) { return v + " veces"; });
+    push("ganados", "Más partidos ganados", topBy(real, function (r) { return r.pg; }, 1), function (v) { return v + (v === 1 ? " ganado" : " ganados"); });
+    push("perdidos", "Más partidos perdidos", topBy(real, function (r) { return r.pp; }, 1), function (v) { return v + (v === 1 ? " perdido" : " perdidos"); });
     push("zapatero", "Más zapateros", topBy(real, function (r) { return r.bonusDet.zapatero; }, 1), function (v) { return v + (v === 1 ? " vez" : " veces"); });
-    push("tantos", "Mejor promedio de tantos", topBy(real, function (r) { return r.pj ? Math.round(r.tf / r.pj * 10) / 10 : null; }), function (v) { return v + " por partido"; });
     push("caidos", "Más partidos caídos", topBy(real, function (r) { return r.caidos; }, 1), function (v) { return v + (v === 1 ? " partido" : " partidos"); });
     var jug = lista.filter(function (x) { return x.e.real; });
     if (jug.length) {
@@ -132,7 +127,6 @@
       var desc = function (o) { var p = o.x.p, r = o.x.e.real, w = r.ta > r.tb; return { j: [byId[w ? p.a : p.b].nombre], t: (w ? r.ta : r.tb) + " a " + (w ? r.tb : r.ta) + " contra " + byId[w ? p.b : p.a].nombre }; };
       var a = desc(mx), b = desc(mn);
       s.push({ clave: "paliza", titulo: "Mayor paliza", jugadores: a.j, valor: mx.d, texto: a.t, nota: "" });
-      s.push({ clave: "parejo", titulo: "Partido más parejo", jugadores: b.j, valor: mn.d, texto: b.t, nota: "" });
     }
     return s;
   }

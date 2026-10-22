@@ -15,6 +15,9 @@ const fecha = iso => { if (!iso) return ""; const d = new Date(iso); return d.to
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
 const tantoTxt = (n, max) => n === null ? "" : n >= max ? "ganó" : n <= max / 2 ? `${n} malas` : `${n - max / 2} buenas`;
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+// Fecha elegida a mano: se guarda a las 12 del mediodía de ese día (hoy: ahora mismo, para no quedar en el futuro)
+const fechaParaGuardar = v => { if (!v) return null; if (v === hoyISO()) return new Date().toISOString(); const [y, m, d] = v.split("-").map(Number); return new Date(y, m - 1, d, 12).toISOString(); };
 const setStatus = s => { $("#syncStatus").textContent = s; };
 const siteURL = () => location.origin + location.pathname;
 
@@ -126,12 +129,24 @@ function bindVacio() {
   const b = $("#btnOrgLogin"); if (b) b.onclick = () => { $("#orgLoginBox").innerHTML = orgLoginHTML(); bindOrgLogin(); };
 }
 function renderStrip(c) {
-  const t = T(); const lider = c.real[0]; const venc = c.caidosPendientes.filter(x => x.vencido).length; const ult = S.resumenes[0];
+  const t = T(); const lider = c.real[0]; const venc = c.caidosPendientes.filter(x => x.vencido).length;
+  const ultAct = S.cargas.length ? S.cargas.reduce((m, k) => k.cuando > m ? k.cuando : m, "") : null;
   $("#strip").innerHTML = `
-    <div class="kpi"><span class="eyebrow">Puntero real</span><span class="v">${lider && lider.pj ? esc(lider.nombre) : "—"}</span><span class="s">${lider && lider.pj ? `${lider.pts} pts${lider.posBlyts !== 1 ? ` · en Blyts va ${lider.posBlyts}º` : ""}` : "Sin partidos todavía"}</span></div>
-    <div class="kpi"><span class="eyebrow">Partidos</span><span class="v num">${c.resumen.jugados}/${c.resumen.total}</span><span class="s">${t.jugadores.length} jugadores${t.inscripcion ? " · inscripción abierta" : ""}</span></div>
+    <div class="kpi"><span class="eyebrow">Puntero real</span><span class="v">${lider && lider.pj ? esc(lider.nombre) : "—"}</span><span class="s">${lider && lider.pj ? `${lider.pts} pts` : "Sin partidos todavía"}</span></div>
+    ${avanceHTML(c, t)}
     <div class="kpi ${c.resumen.pendientesRecuperar ? "alert" : ""}"><span class="eyebrow">Caídos sin recuperar</span><span class="v num">${c.resumen.pendientesRecuperar}</span><span class="s">${venc ? `${venc} pasado${venc > 1 ? "s" : ""} de ${t.diasRecuperar} días` : `${c.resumen.caidos} caído${c.resumen.caidos === 1 ? "" : "s"} en total`}</span></div>
-    <div class="kpi"><span class="eyebrow">Último parte</span><span class="v" style="font-size:18px">${ult ? fecha(ult.creado) : "—"}</span><span class="s">${ult ? "del agente programado" : "Todavía no se publicó"}</span></div>`;
+    <div class="kpi"><span class="eyebrow">Última actualización</span><span class="v" style="font-size:18px">${ultAct ? fecha(ultAct) : "—"}</span><span class="s">${ultAct ? "" : "Sin resultados cargados"}</span></div>`;
+}
+function avanceHTML(c, t) {
+  const total = c.resumen.total, jug = c.resumen.jugados, caid = c.resumen.pendientesRecuperar;
+  const falta = Math.max(0, total - jug - caid);
+  const pct = total ? Math.round(jug / total * 100) : 0;
+  const w = n => total ? (n / total * 100) : 0;
+  return `<div class="kpi kpi-avance"><span class="eyebrow">Avance del torneo</span>
+    <span class="v num">${pct}%</span>
+    <div class="bar" role="img" aria-label="${jug} jugados, ${caid} caídos sin recuperar, ${falta} por jugar, de ${total}">
+      <i class="seg ok" style="width:${w(jug)}%"></i><i class="seg caid" style="width:${w(caid)}%"></i></div>
+    <span class="s"><span class="dot ok"></span>${jug} jugado${jug === 1 ? "" : "s"}${caid ? ` · <span class="dot caid"></span>${caid} caído${caid === 1 ? "" : "s"}` : ""} · ${falta} por jugar · ${total} en total</span></div>`;
 }
 function renderTabs(c) {
   const tabs = [["posiciones", "Posiciones"], ["partidos", "Partidos"], ["stats", "Estadísticas"], ["cargar", soyId() ? "Cargar resultado" : "Entrar / inscribirme"]];
@@ -175,7 +190,7 @@ function parteAuto(c) {
   const ult = c.historial.slice(-3).reverse();
   if (ult.length) { L.push(""); L.push("Últimos: " + ult.map(h => { const aw = h.ta > h.tb; return `${nombre(aw ? h.a : h.b)} ${Math.max(h.ta, h.tb)}-${Math.min(h.ta, h.tb)} ${nombre(aw ? h.b : h.a)}`; }).join(" · ")); }
   if (c.caidosPendientes.length) { L.push(""); L.push("⚠️ Caídos sin recuperar: " + c.caidosPendientes.map(x => `${nombre(x.p.a)} vs ${nombre(x.p.b)} (${x.dias} día${x.dias === 1 ? "" : "s"})`).join(" · ")); }
-  const st = c.stats.find(s => s.clave === "racha") || c.stats[0];
+  const st = c.stats.find(s => s.clave === "ganados") || c.stats[0];
   if (st) { L.push(""); L.push(`🔥 ${st.titulo}: ${st.jugadores.join(", ")} (${st.texto})`); }
   L.push(""); L.push(`Tabla completa: ${siteURL()}`);
   return L.join("\n");
@@ -188,12 +203,13 @@ function vPosiciones(v, c) {
       <div class="blk"><div class="blk-head"><div><h2>Tabla real</h2><p class="muted small">Con los partidos caídos corregidos. ${esc(reglasTxt(t))}. Los caídos sin recuperar no cuentan.</p></div></div>${tablaReal(c)}</div>
       <div class="blk"><div class="blk-head"><div><h2>Tabla de Blyts</h2><p class="muted small">Como la muestra la app, contando los resultados automáticos de los partidos caídos.</p></div></div>${tablaBlyts(c)}</div>
     </div>
-    <div class="blk"><div class="blk-head"><div><h2>Parte para el grupo</h2><p class="muted small">${ult ? `Lo escribió el agente programado el ${fecha(ult.creado)}.` : "Se arma solo con los datos de ahora."} Un toque y lo mandás al grupo de WhatsApp.</p></div>
+    ${esOrg() ? `<div class="blk"><div class="blk-head"><div><h2>Parte para el grupo</h2><p class="muted small">${ult ? `Lo escribió el agente programado el ${fecha(ult.creado)}.` : "Se arma solo con los datos de ahora."} Un toque y lo mandás al grupo de WhatsApp.</p></div>
       ${ult ? `<button class="ghost" id="btnParteAhora">Usar la tabla de este momento</button>` : ""}</div>
       <div class="ai-out" id="parteTxt">${esc(texto)}</div>
       <div class="row-actions"><a class="btn wa" id="waLink" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(texto)}">Mandar por WhatsApp</a><button id="btnCopiar">Copiar texto</button><span class="status" id="copiado"></span></div>
-    </div></section>`;
+    </div>` : ""}</section>`;
   const pa = $("#btnParteAhora"); if (pa) pa.onclick = () => { const tx = parteAuto(c); $("#parteTxt").textContent = tx; $("#waLink").href = "https://wa.me/?text=" + encodeURIComponent(tx); pa.remove(); };
+  if (!esOrg()) return;
   $("#btnCopiar").onclick = async () => { const tx = $("#parteTxt").textContent;
     try { await navigator.clipboard.writeText(tx); $("#copiado").textContent = "Copiado"; }
     catch (e) { const r = document.createRange(); r.selectNodeContents($("#parteTxt")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("#copiado").textContent = "Texto seleccionado, copialo a mano"; } };
@@ -331,7 +347,7 @@ function confLine(p, parte, me) {
 function formHTML(x, me) {
   const p = x.p, t = T(); const { yo, rival } = ladoDe(p, me);
   const val = (obj, id) => obj ? (id === p.a ? obj.ta : obj.tb) : null;
-  if (!S.form || S.form.pid !== p.id) S.form = { pid: p.id, modo: p.estado === "caido" ? "rec" : p.estado === "pendiente" ? "nuevo" : "ver", tipo: "jugado", yo: null, rival: null, msg: "", saving: false };
+  if (!S.form || S.form.pid !== p.id) S.form = { pid: p.id, modo: p.estado === "caido" ? "rec" : p.estado === "pendiente" ? "nuevo" : "ver", tipo: "jugado", yo: null, rival: null, fecha: "", msg: "", saving: false };
   const f = S.form; const yoN = nombre(yo), rivN = nombre(rival);
   const head = `<div class="blk-head"><div><span class="eyebrow">${estadoTxt(p)}</span><h2>${esc(yoN)} vs ${esc(rivN)}</h2></div></div>`;
   const blytsBox = p.blyts ? `<div class="res-shown"><span class="eyebrow">${p.estado === "jugado" ? "Resultado" : "Lo que dio Blyts al caerse"}</span><span class="score" style="text-align:left">${esc(yoN)} ${val(p.blyts, yo)} - ${val(p.blyts, rival)} ${esc(rivN)}</span>${confLine(p, "blyts", me)}</div>` : "";
@@ -352,6 +368,8 @@ function formHTML(x, me) {
       <span class="x">a</span>
       <div class="side"><span class="nm">${esc(rivN)}</span><input class="big" id="fRiv" type="number" inputmode="numeric" min="0" max="${t.tantos}" value="${f.rival ?? ""}" aria-label="Tantos de ${esc(rivN)}"><span class="tanto" id="tRiv">${tantoTxt(N(f.rival), t.tantos)}</span></div>
     </div>
+    <label class="lbl fecha">${f.modo === "rec" ? "¿Cuándo se recuperó?" : "¿Cuándo se jugó?"} <span class="opt">opcional</span>
+      <input type="date" id="fFecha" value="${esc(f.fecha)}" max="${hoyISO()}"><span class="small muted">Si lo dejás vacío, ${f.modo === "corregir" ? "se mantiene la fecha que ya tenía" : "se toma el momento en que lo cargás"}.</span></label>
     <div id="fMsg" class="small">${f.msg}</div>
     <div class="row-actions"><button class="primary" id="btnGuardar" ${f.saving ? "disabled" : ""}>${f.saving ? "Guardando…" : "Guardar resultado"}</button>${p.estado !== "pendiente" && !(f.modo === "rec" && p.estado === "caido") ? `<button class="ghost" id="btnCancelar">Cancelar</button>` : ""}</div>
     ${f.modo === "rec" ? "" : recBox}${hist}</div>`;
@@ -371,15 +389,17 @@ function bindForm(x, me) {
     if (!r.ok) { f.msg = `<span class="d-down">${esc(r.error)}</span>`; sesionInvalida(r.error); }
     recargar(false); });
   on("fYo", "oninput", e => { f.yo = e.target.value; $("#tYo").textContent = tantoTxt(N(f.yo), t.tantos); });
+  on("fFecha", "onchange", e => { f.fecha = e.target.value; });
   on("fRiv", "oninput", e => { f.rival = e.target.value; $("#tRiv").textContent = tantoTxt(N(f.rival), t.tantos); });
   on("btnGuardar", "onclick", async () => {
     const err = TrucoCalc.validarResultado(t.tantos, N(f.yo), N(f.rival));
     if (err) { f.msg = `<span class="d-down">${esc(err)}</span>`; return render(); }
     f.saving = true; f.msg = ""; render();
     const tipo = f.modo === "rec" ? "rec" : f.tipo;
-    const args = { p_torneo: S.actualId, p_a: yo, p_b: rival, p_tipo: tipo, p_ta: N(f.yo), p_tb: N(f.rival) };
+    if (f.fecha && f.fecha > hoyISO()) { f.saving = false; f.msg = `<span class="d-down">La fecha no puede ser futura.</span>`; return render(); }
+    const args = { p_torneo: S.actualId, p_a: yo, p_b: rival, p_tipo: tipo, p_ta: N(f.yo), p_tb: N(f.rival), p_fecha: fechaParaGuardar(f.fecha) };
     if (me === "org") args.p_admin = S.sesion.admin; else { args.p_jugador = me; args.p_pin = S.sesion.pin; }
-    const r = await rpc("cargar_resultado", args);
+    const r = await rpc("registrar_resultado", args);
     if (r.ok) { S.form = null; await recargar(false); }
     else { f.saving = false; f.msg = `<span class="d-down">${esc(r.error)}</span>`; sesionInvalida(r.error); render(); }
   });
